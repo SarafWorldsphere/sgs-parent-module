@@ -3,7 +3,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { XMarkIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { useSchool } from '@saraswati/tenant-kit';
 import { clearAICache } from '@/lib/aiService';
+import { schoolLogo } from '@saraswati/tenant-kit';
+import { parentMenu } from '@/lib/parentNav';
 
 // ── Logout Confirmation Dialog ────────────────────────────────────────────────
 
@@ -54,6 +57,7 @@ function Toast({ message }: { message: string }) {
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
+  const school = useSchool();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showLogoutDlg, setShowLogoutDlg] = useState(false);
@@ -72,29 +76,13 @@ export default function Sidebar() {
   }, [pathname]);
 
   const handleLogoutConfirm = () => {
-    const sgsUrl = process.env.NEXT_PUBLIC_SGS_URL;
-    if (!sgsUrl) {
-      console.error('[SGS] NEXT_PUBLIC_SGS_URL is not configured. Cannot redirect after logout.');
-      alert('Logout redirect is not configured. Please contact your administrator.');
-      return;
-    }
     clearAICache();
     setShowLogoutDlg(false);
     setShowToast(true);
     setTimeout(() => {
-      window.location.replace(sgsUrl);
+      window.location.replace("/");
     }, 1000);
   };
-
-  const menuItems = [
-    { name: 'Dashboard',            icon: '🏠', path: '/parent/dashboard' },
-    { name: 'Assessments',          icon: '📝', path: '/parent/assessments' },
-    { name: 'Assignments',          icon: '📄', path: '/parent/assignments' },
-    { name: 'Quiz Performance',     icon: '📊', path: '/parent/quiz' },
-    { name: 'Teacher Remarks',      icon: '💬', path: '/parent/remarks' },
-    { name: 'Notices',              icon: '🔔', path: '/parent/notices' },
-    { name: 'Communication Center', icon: '🏫', path: '/parent/communication' },
-  ];
 
   return (
     <>
@@ -108,16 +96,17 @@ export default function Sidebar() {
 
       <aside
         className={`
-          w-full sm:w-64 bg-slate-900/95 backdrop-blur-md text-white flex flex-col h-screen
+          w-full sm:w-64 backdrop-blur-md text-white flex flex-col h-screen bg-[var(--school-primary)]
           fixed left-0 top-0 overflow-y-auto z-40 border-r border-white/5
           transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
         <div className="p-6 flex items-center gap-3 border-b border-white/10">
-          <img src="/parent/logo.jpeg" alt="SGS-SWAIS" className="h-10 w-auto" />
+          <img src={schoolLogo(school.tenantId)} alt="" className="h-10 w-auto" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-400">Parent Dashboard</p>
+            <p className="text-sm font-semibold leading-tight truncate">{school.shortName}</p>
+            <p className="text-xs text-white/70">Parent Dashboard</p>
           </div>
           {/* Close button — mobile only */}
           <button
@@ -131,16 +120,16 @@ export default function Sidebar() {
 
         <nav className="flex-1 py-6">
           <ul className="space-y-2 px-4">
-            {menuItems.map((item, index) => {
+            {parentMenu.map((item) => {
               const isActive = pathname.startsWith(item.path);
               return (
-                <li key={index}>
+                <li key={item.path}>
                   <Link
                     href={item.path}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
-                        ? 'bg-orange-600 text-white'
-                        : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        ? 'bg-[var(--school-accent)] text-white'
+                        : 'text-white/80 hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     <span>{item.icon}</span>

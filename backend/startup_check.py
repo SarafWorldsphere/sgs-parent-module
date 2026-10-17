@@ -6,11 +6,9 @@ connected database before uvicorn starts serving traffic.
 
 WHY THIS EXISTS
 ───────────────
-When DB_TABLE_PREFIX="sgs_" the app targets the SGS AWS RDS instance.
-Some tables that existed locally (e.g. teacher_parent_interaction) have
-NO equivalent on RDS.  Rather than crashing mid-request with an obscure
-psycopg2 "relation does not exist" error, this script lets the startup
-sequence detect and report the problem immediately.
+The shared database uses unprefixed table names. Some older tables
+(e.g. teacher_parent_interaction) are not part of the current schema.
+This script reports a missing required table before the first request.
 
 HOW TO USE
 ──────────
@@ -47,7 +45,7 @@ import sys
 import logging
 
 from sqlalchemy import text
-from database import engine, DB_PREFIX
+from database import engine
 
 log = logging.getLogger(__name__)
 
@@ -90,9 +88,7 @@ def _existing_tables(schema: str = "public") -> set:
     """
     Return the set of table names that currently exist in *schema*.
 
-    Uses information_schema.tables so this works on PostgreSQL regardless
-    of DB_PREFIX — we pass the bare (un-prefixed) name to information_schema
-    and prefix it ourselves when querying.
+    Uses information_schema.tables. Table names are unprefixed.
     """
     sql = text(
         "SELECT table_name FROM information_schema.tables "
@@ -134,39 +130,35 @@ def run_startup_checks(raise_on_error: bool = True) -> bool:
         except Exception:
             db_url_hint = "<DATABASE_URL set>"
     else:
-        db_url_hint = "local PostgreSQL (DATABASE_URL not set)"
-    prefix      = DB_PREFIX or "(no prefix)"
+        db_url_hint = "DATABASE_URL not set"
 
     log.info("=" * 60)
     log.info("  Startup table check")
     log.info("  Database  : %s", db_url_hint)
-    log.info("  Prefix    : %s", prefix)
     log.info("=" * 60)
 
     existing = _existing_tables()
 
     # ── Required tables ───────────────────────────────────────────────────
     missing_required = []
-    for bare_name in REQUIRED_TABLES:
-        physical = f"{DB_PREFIX}{bare_name}"
-        if physical in existing:
-            log.info("  ✓  %-40s  OK", physical)
+    for name in REQUIRED_TABLES:
+        if name in existing:
+            log.info("  ✓  %-40s  OK", name)
         else:
-            log.error("  ✗  %-40s  MISSING", physical)
-            missing_required.append(physical)
+            log.error("  ✗  %-40s  MISSING", name)
+            missing_required.append(name)
 
     # ── Legacy / optional tables ─────────────────────────────────────────
-    for bare_name in LEGACY_TABLES:
-        physical = f"{DB_PREFIX}{bare_name}"
-        if physical in existing:
+    for name in LEGACY_TABLES:
+        if name in existing:
             log.warning(
                 "  ⚠  %-40s  present (legacy — not actively queried)",
-                physical,
+                name,
             )
         else:
             log.info(
-                "  –  %-40s  absent  (legacy — expected on RDS)",
-                physical,
+                "  –  %-40s  absent  (legacy)",
+                name,
             )
 
     log.info("=" * 60)
@@ -176,8 +168,7 @@ def run_startup_checks(raise_on_error: bool = True) -> bool:
             f"Startup check FAILED — {len(missing_required)} required table(s) "
             f"not found in the database:\n  " +
             "\n  ".join(missing_required) +
-            "\n\nEnsure the correct DB_TABLE_PREFIX is set and the migration "
-            "scripts have been applied."
+            "\n\nApply saraswati-tenant-kit before starting this API."
         )
         log.error(msg)
         if raise_on_error:

@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, NoCredentialsError
+from saraswati_tenant import current_school, s3_path_validator
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ def generate_presigned_url(s3_uri: str, expiry: int = _PRESIGN_EXPIRY) -> str:
     Raises RuntimeError if AWS credentials are missing or the S3 call fails.
     """
     bucket, key = _parse_s3_uri(s3_uri)
+    s3_path_validator(key, current_school().tenant_id)
     try:
         client = boto3.client(
             "s3",

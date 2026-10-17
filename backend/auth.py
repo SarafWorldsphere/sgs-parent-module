@@ -23,6 +23,7 @@ from typing import Optional
 
 import jwt
 from fastapi import Depends, Header, HTTPException, status
+from saraswati_tenant import current_school
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -54,6 +55,7 @@ def create_parent_token(parent: ParentMaster) -> str:
         "sub": str(parent.parent_id),
         "parent_id": parent.parent_id,
         "role": "parent",
+        "tenant_id": current_school().tenant_id,
         "iat": now,
         "exp": now + timedelta(hours=JWT_EXPIRE_HOURS),
     }
@@ -67,6 +69,11 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired. Please log in again.")
     except jwt.InvalidTokenError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid session.")
+
+
+def _require_this_school(claims: dict) -> None:
+    if claims.get("tenant_id") != current_school().tenant_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session is for another school.")
 
 
 def get_current_parent(
@@ -86,6 +93,7 @@ def get_current_parent(
     claims = decode_token(authorization.split(" ", 1)[1].strip())
     if claims.get("role") != "parent":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a parent session.")
+    _require_this_school(claims)
 
     parent = db.query(ParentMaster).filter(ParentMaster.parent_id == claims["parent_id"]).first()
     if not parent:
@@ -116,6 +124,7 @@ def get_current_parent_or_demo(
     claims = decode_token(authorization.split(" ", 1)[1].strip())
     if claims.get("role") != "parent":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a parent session.")
+    _require_this_school(claims)
 
     parent = db.query(ParentMaster).filter(ParentMaster.parent_id == claims["parent_id"]).first()
     if not parent:

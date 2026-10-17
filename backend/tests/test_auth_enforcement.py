@@ -17,21 +17,21 @@ from unittest.mock import MagicMock, patch
 
 # Set test environment BEFORE importing app modules that read env vars at import time.
 # DATABASE_URL must be a postgresql:// URL so SQLAlchemy accepts pool_size/max_overflow.
-# DB_TABLE_PREFIX is set non-empty so main.py skips Base.metadata.create_all().
 # get_db is fully overridden in every test so no real DB connection is ever made.
 os.environ.setdefault("APP_ENV", "production")
 os.environ.setdefault("JWT_SECRET", "test-secret-for-pytest-only")
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test_db")
-os.environ["DB_TABLE_PREFIX"] = "sgs_"
 
-# Suppress startup checks and create_all — neither should hit the DB in tests.
-with patch("startup_check.run_startup_checks", return_value=True), \
-     patch("sqlalchemy.schema.MetaData.create_all"):
+TEST_TENANT = "11111111-1111-1111-1111-111111111111"
+
+# Suppress startup checks — they should not hit the DB in tests.
+with patch("startup_check.run_startup_checks", return_value=True):
     from main import app
 
 from database import get_db
 import auth
 from models import ParentMaster, ParentStudentMap, StudentMaster, SupportTicket
+from saraswati_tenant.types import School
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -80,6 +80,7 @@ def _valid_token(parent_id: int) -> str:
         "sub": str(parent_id),
         "parent_id": parent_id,
         "role": "parent",
+        "tenant_id": TEST_TENANT,
         "iat": now,
         "exp": now + timedelta(hours=1),
     }
@@ -117,6 +118,19 @@ def _mock_db_session(parent_id: int, student_id: int):
 
     db.query.side_effect = _query_side_effect
     return db
+
+
+@pytest.fixture(autouse=True)
+def _bind_test_school():
+    school = School(
+        tenant_id=TEST_TENANT,
+        slug="sgs",
+        status="active",
+        isolation="rls",
+        config={},
+    )
+    with patch("saraswati_tenant.middleware.resolve_school", return_value=school):
+        yield
 
 
 # ── Tests: /dashboard/{student_id} ────────────────────────────────────────
@@ -172,6 +186,20 @@ class TestDashboardAuth:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 403, resp.text
+
+    def test_token_from_another_school_gets_401(self):
+        self._override_db(AUTHORIZED_PARENT_ID, AUTHORIZED_STUDENT_ID)
+        token = _valid_token(AUTHORIZED_PARENT_ID)
+        import jwt as pyjwt
+        claims = pyjwt.decode(token, os.environ["JWT_SECRET"], algorithms=["HS256"])
+        claims["tenant_id"] = "22222222-2222-2222-2222-222222222222"
+        foreign = pyjwt.encode(claims, os.environ["JWT_SECRET"], algorithm="HS256")
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get(
+            f"/dashboard/{AUTHORIZED_STUDENT_ID}",
+            headers={"Authorization": f"Bearer {foreign}"},
+        )
+        assert resp.status_code == 401, resp.text
 
     def test_missing_token_production_gets_401(self):
         """Scenario 3: no token, IS_DEV=False (production) → 401."""

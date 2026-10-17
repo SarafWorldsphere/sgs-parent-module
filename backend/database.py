@@ -1,34 +1,29 @@
 from dotenv import load_dotenv
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
+from saraswati_tenant import apply_rls
 
 load_dotenv()
 
-# Use environment variable for AWS RDS readiness, default to local PostgreSQL
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5432/mydb_sgs")
-
-# Runtime table-name prefix switch.
-# Local dev  : DB_TABLE_PREFIX=""      → plain names  (assignment_master, …)
-# RDS / prod : DB_TABLE_PREFIX="sgs_"  → sgs_ names   (sgs_assignment_master, …)
-DB_PREFIX = os.getenv("DB_TABLE_PREFIX", "")
+SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    pool_pre_ping=True,   # test connections before reuse — prevents stale-conn crashes
-    pool_recycle=300,     # recycle after 5 min — avoids AWS RDS idle-timeout drops
+    pool_pre_ping=True,
+    pool_recycle=300,
     pool_size=5,
-    max_overflow=10
+    max_overflow=10,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Dependency for FastAPI
+
 def get_db():
     db = SessionLocal()
     try:
+        apply_rls(db)
         yield db
     finally:
         db.close()
