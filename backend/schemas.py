@@ -464,6 +464,10 @@ class CreateConversationSchema(BaseModel):
     subject: str
     category: str
     recipient_name: str
+    # The teacher_id the recipient picker already returns — a users_masters
+    # user_id. Optional so an older client that sends only the name keeps
+    # working; without it the conversation cannot be routed to a teacher.
+    recipient_user_id: Optional[int] = None
     first_message: str
 
 class SendConversationMessageSchema(BaseModel):

@@ -313,6 +313,10 @@ function NewConversationModal({
         subject:        subject.trim(),
         category,
         recipient_name: recipient.name,
+        // The picker already resolved a real user id; send it. Without it the
+        // conversation can only be matched to a teacher by name, and a name is
+        // not identity.
+        recipient_user_id: recipient.teacher_id,
         first_message:  finalMsg,
       });
       onCreate(conv);

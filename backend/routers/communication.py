@@ -128,6 +128,9 @@ def create_conversation(body: CreateConversationSchema, db: Session = Depends(ge
         subject=body.subject,
         category=body.category,
         recipient_name=body.recipient_name,
+        # The picker hands the client a real user_id; store it rather than
+        # relying on the name to identify the teacher later.
+        recipient_user_id=body.recipient_user_id,
         priority="MEDIUM",
         status="OPEN",
     )
