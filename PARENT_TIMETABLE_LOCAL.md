@@ -31,5 +31,11 @@ existing development-only demo parent configuration. A linked active child and
 admin period/timetable data must exist in the local database to display slots.
 Do not copy staging credentials for local testing.
 
-Pending: browser visual verification and a complete request against a seeded
-local database containing the admin timetable tables.
+Verification: 8 endpoint/access tests and 2 local PostgreSQL query tests pass.
+The SQL tests create temporary admin-shaped tables and check class/section
+filtering, teacher lookup, half-day timings, empty schedules and unknown years.
+Run them with `PARENT_TIMETABLE_TEST_DATABASE_URL` pointing only to the local
+`student_timetable_test` database (localhost/127.0.0.1).
+
+Pending: browser visual verification and a complete authenticated request using
+a deployed admin-created schedule. No staging database records were changed.

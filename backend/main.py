@@ -46,4 +46,3 @@ app.include_router(timetable.router)
 @app.get("/")
 def read_root():
     return {"message": "Parent Dashboard API is running"}
-
