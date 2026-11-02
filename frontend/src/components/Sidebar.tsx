@@ -87,6 +87,7 @@ export default function Sidebar() {
   };
 
   const menuItems = [
+    { name: 'Student Timetable', icon: '📅', path: '/parent/timetable' },
     { name: 'Dashboard',            icon: '🏠', path: '/parent/dashboard' },
     { name: 'Assessments',          icon: '📝', path: '/parent/assessments' },
     { name: 'Assignments',          icon: '📄', path: '/parent/assignments' },

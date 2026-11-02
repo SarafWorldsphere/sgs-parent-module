@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base, DB_PREFIX
 import models
-from routers import auth, dashboard, translation, communication, debug, assessments
+from routers import auth, dashboard, translation, communication, debug, assessments, timetable
 from startup_check import run_startup_checks
 import logging
 
@@ -41,7 +41,9 @@ app.include_router(translation.router, tags=["Translation"])
 app.include_router(communication.router)
 app.include_router(debug.router)   # dev-only: GET /debug/seeded-students, /debug/seeded-parents
 app.include_router(assessments.router, tags=["Assessments"])
+app.include_router(timetable.router)
 
 @app.get("/")
 def read_root():
     return {"message": "Parent Dashboard API is running"}
+
