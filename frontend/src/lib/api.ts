@@ -273,6 +273,9 @@ export const createConversation = async (payload: {
   subject: string;
   category: string;
   recipient_name: string;
+  /** users_masters.user_id of the teacher written to — how the faculty side
+   *  finds this conversation. Null only when the picker could not resolve one. */
+  recipient_user_id: number | null;
   first_message: string;
 }) => {
   const response = await api.post('/comm/conversations', payload);

@@ -367,6 +367,12 @@ class SupportTicket(Base):
     priority       = Column(String)
     status         = Column(String, default="OPEN")
     recipient_name = Column(String, nullable=True)
+    # Who the parent wrote to, as an id into users_masters. recipient_name is
+    # kept for display and for rows written before this existed, but it is a
+    # name and names are not identity: two teachers sharing one would read each
+    # other's messages about a child. The faculty side joins on this column.
+    # Nullable because older rows may have an ambiguous or unmatched name.
+    recipient_user_id = Column(BigInteger, nullable=True, index=True)
     created_at     = Column(DateTime, default=datetime.utcnow)
     updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
