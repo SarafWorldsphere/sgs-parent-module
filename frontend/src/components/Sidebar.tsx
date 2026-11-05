@@ -87,13 +87,14 @@ export default function Sidebar() {
   };
 
   const menuItems = [
-    { name: 'Student Timetable', icon: '📅', path: '/parent/timetable' },
     { name: 'Dashboard',            icon: '🏠', path: '/parent/dashboard' },
+    { name: 'Student Timetable', icon: '📅', path: '/parent/timetable' },
     { name: 'Assessments',          icon: '📝', path: '/parent/assessments' },
     { name: 'Assignments',          icon: '📄', path: '/parent/assignments' },
     { name: 'Quiz Performance',     icon: '📊', path: '/parent/quiz' },
     { name: 'Teacher Remarks',      icon: '💬', path: '/parent/remarks' },
     { name: 'Notices',              icon: '🔔', path: '/parent/notices' },
+    { name: 'Notifications',        icon: '🔔', path: '/parent/notifications' },
     { name: 'Communication Center', icon: '🏫', path: '/parent/communication' },
   ];
 

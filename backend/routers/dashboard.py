@@ -509,6 +509,7 @@ def get_unread_count(student_id: int, db: Session = Depends(get_db), current: Pa
         .join(SupportTicket, TicketMessage.ticket_id == SupportTicket.ticket_id)\
         .filter(
             SupportTicket.student_id == student_id,
+            SupportTicket.parent_id == current.parent_id,
             TicketMessage.sender_type == "TEACHER",
             TicketMessage.is_read == False,
         ).count()
@@ -518,28 +519,13 @@ def get_unread_count(student_id: int, db: Session = Depends(get_db), current: Pa
 @router.get("/notifications/{student_id}", response_model=List[NotificationSchema])
 def get_notifications(student_id: int, db: Session = Depends(get_db), current: ParentMaster = Depends(get_current_parent_or_demo)):
     verify_student_ownership(db, current, student_id)
-    notifications = []
+    from services.parent_notifications import notification_history
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        notifications = [NotificationSchema(**row) for row in notification_history(db, student_id, current.parent_id, 10)]
+    except SQLAlchemyError as error:
+        raise HTTPException(503, 'Unable to load notifications. Please try again.') from error
     today = date.today()
-
-    # 1. Unread Teacher messages in Communication Center
-    unread_msgs = db.query(TicketMessage, SupportTicket)\
-        .join(SupportTicket, TicketMessage.ticket_id == SupportTicket.ticket_id)\
-        .filter(
-            SupportTicket.student_id == student_id,
-            TicketMessage.sender_type == "TEACHER",
-            TicketMessage.is_read == False,
-        ).order_by(TicketMessage.created_at.desc()).all()
-
-    for msg, ticket in unread_msgs[:5]:
-        notifications.append(NotificationSchema(
-            id=f"msg_{msg.message_id}",
-            type="ticket_reply",
-            title=f"Reply from {msg.sender_name or 'Teacher'}",
-            message=(msg.message[:80] + "…") if len(msg.message) > 80 else msg.message,
-            date=msg.created_at.isoformat() if msg.created_at else "",
-            is_read=False,
-            link="/parent/communication",
-        ))
 
     # 2. Unread Teacher remarks (new ticket messages of type TEACHER not yet read)
     student = db.query(StudentMaster).filter(StudentMaster.student_id == student_id).first()

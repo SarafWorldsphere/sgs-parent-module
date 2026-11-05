@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base, DB_PREFIX
 import models
-from routers import auth, dashboard, translation, communication, debug, assessments, timetable
+from routers import auth, dashboard, translation, communication, debug, assessments, timetable, notifications
 from startup_check import run_startup_checks
 import logging
 
@@ -42,6 +42,7 @@ app.include_router(communication.router)
 app.include_router(debug.router)   # dev-only: GET /debug/seeded-students, /debug/seeded-parents
 app.include_router(assessments.router, tags=["Assessments"])
 app.include_router(timetable.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 def read_root():

@@ -204,10 +204,17 @@ export const fetchAssessmentAnalytics = async (studentId: number) => {
 };
 
 export const fetchNotifications = async (studentId: number) => {
-  try {
     const response = await api.get(`/notifications/${studentId}`);
     return response.data;
-  } catch { return []; }
+};
+
+export type ParentNotification = {
+  id: string; type: string; title: string; teacher_name: string;
+  notification_type: string; message: string; date: string; channel: string; link: string; is_read: boolean;
+};
+export const fetchNotificationHistory = async (studentId: number, offset = 0, signal?: AbortSignal): Promise<{ items: ParentNotification[]; has_more: boolean }> => {
+  const response = await api.get(`/notification-history/${studentId}`, { params: { offset, limit: 50 }, signal });
+  return response.data;
 };
 
 export const fetchUnreadCommCount = async (studentId: number): Promise<number> => {

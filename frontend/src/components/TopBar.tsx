@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ChildSelector from './ChildSelector';
 import LanguageSelector from './LanguageSelector';
 import { fetchNotifications, PARENT_NAME_KEY, SESSION_EVENT } from '@/lib/api';
 import Link from 'next/link';
+import { NOTIFICATION_READ_EVENT, readNotificationIds, saveNotificationIds } from '@/lib/notificationReadState';
 import { useRouter } from 'next/navigation';
 import { BellIcon, Bars3Icon, UserCircleIcon } from '@heroicons/react/24/outline';
 
@@ -29,21 +30,6 @@ function initialsOf(name: string | null): string {
 }
 
 // ── localStorage helpers for client-side read tracking ───────────────────────
-
-function getReadIds(studentId: number, kind: 'notif'): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(`sgs_read_${kind}_${studentId}`);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch { return new Set(); }
-}
-
-function saveReadIds(studentId: number, kind: 'notif', ids: Set<string>) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(`sgs_read_${kind}_${studentId}`, JSON.stringify([...ids]));
-  } catch { /* ignore */ }
-}
 
 function notifIcon(type: string) {
   const map: Record<string, string> = {
@@ -72,23 +58,40 @@ export default function TopBar({
   const bellRef    = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Load notifications whenever studentId changes
-  const loadNotifications = useCallback(async () => {
-    if (!studentId) return;
-    try {
-      const data = await fetchNotifications(studentId);
-      setNotifications(data ?? []);
-    } catch { /* ignore */ }
-  }, [studentId]);
+  const [notificationError, setNotificationError] = useState('');
+  const [notificationScope, setNotificationScope] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    setNotifications([]);
+    setNotificationError('');
+    setNotificationScope('');
+    if (!parentId || !studentId) return;
+    const load = async () => {
+      try {
+        const data = await fetchNotifications(studentId);
+        if (!cancelled) { setNotifications(data ?? []); setNotificationScope(`${parentId}:${studentId}`); setNotificationError(''); }
+      } catch {
+        if (!cancelled) setNotificationError('Unable to load notifications.');
+      }
+    };
+    load();
+    const timer = window.setInterval(load, 60000);
+    window.addEventListener('focus', load);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener('focus', load); };
+  }, [parentId, studentId]);
 
-  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+  useEffect(() => {
+    const sync = () => setReadIds(readNotificationIds(parentId, studentId));
+    window.addEventListener(NOTIFICATION_READ_EVENT, sync);
+    return () => window.removeEventListener(NOTIFICATION_READ_EVENT, sync);
+  }, [parentId, studentId]);
 
   // Restore read state from localStorage on mount / studentId change.
   // Also merge in notice read states from the shared sgs_read_notices_ key
   // so that notices marked read on the Notices page are reflected in the bell.
   useEffect(() => {
     if (!studentId) return;
-    const ids = getReadIds(studentId, 'notif');
+    const ids = readNotificationIds(parentId, studentId);
     try {
       const raw = localStorage.getItem(`sgs_read_notices_${studentId}`);
       if (raw) {
@@ -97,7 +100,7 @@ export default function TopBar({
       }
     } catch { /* ignore */ }
     setReadIds(ids);
-  }, [studentId]);
+  }, [parentId, studentId]);
 
   // Real-time sync: when the Notices page marks a notice read (same tab),
   // it fires 'sgsNoticeRead'. We update readIds so the bell count drops immediately.
@@ -126,15 +129,15 @@ export default function TopBar({
     return () => document.removeEventListener('mousedown', handler);
   }, [showNotifications, showProfile]);
 
-  const unreadNotifications = notifications.filter((n: any) => !readIds.has(n.id));
+  const unreadNotifications = notificationScope === `${parentId}:${studentId}` ? notifications.filter((n: any) => !n.is_read && !readIds.has(n.id)) : [];
   const unreadCount = unreadNotifications.length;
 
   const markOneRead = (id: string) => {
-    const next = new Set(readIds);
+    const next = new Set([...readNotificationIds(parentId, studentId), ...readIds]);
     next.add(id);
     setReadIds(next);
     if (studentId) {
-      saveReadIds(studentId, 'notif', next);
+      saveNotificationIds(parentId, studentId, next);
       // Sync notice reads to the shared sgs_read_notices_ key used by Notices page
       if (id.startsWith('not_')) {
         const noticeId = parseInt(id.slice(4));
@@ -151,10 +154,10 @@ export default function TopBar({
   };
 
   const markAllRead = () => {
-    const next = new Set(notifications.map((n: any) => n.id as string));
+    const next = new Set([...readNotificationIds(parentId, studentId), ...notifications.map((n: any) => n.id as string)]);
     setReadIds(next);
     if (studentId) {
-      saveReadIds(studentId, 'notif', next);
+      saveNotificationIds(parentId, studentId, next);
       // Sync all notice IDs to the shared sgs_read_notices_ key
       const noticeIds: number[] = [];
       for (const id of next) {
@@ -232,7 +235,7 @@ export default function TopBar({
                 </div>
 
                 <div className="max-h-80 overflow-y-auto">
-                  {unreadNotifications.length === 0 ? (
+                  {notificationError ? <p role="alert" className="p-4 text-sm text-red-300">{notificationError}</p> : unreadNotifications.length === 0 ? (
                     <div className="p-6 text-center">
                       <p className="text-2xl mb-2">✅</p>
                       <p className="text-sm text-slate-400 font-medium">You&apos;re all caught up!</p>
@@ -264,11 +267,11 @@ export default function TopBar({
 
                 <div className="p-3 bg-white/5 border-t border-white/10 text-center">
                   <Link
-                    href="/parent/communication"
+                    href="/parent/notifications"
                     onClick={() => setShowNotifications(false)}
                     className="text-xs font-bold text-slate-400 hover:text-orange-400 uppercase tracking-wider"
                   >
-                    View All Communications →
+                    View All Notifications →
                   </Link>
                 </div>
               </div>
