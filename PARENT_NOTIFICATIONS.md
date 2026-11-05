@@ -3,10 +3,16 @@
 Local implementation only. No pushes, deployment, schema changes or school data
 writes are part of this work.
 
-`/parent/notifications` shows full teacher messages, newest first, with All,
-Unread and Read filters, Refresh, and pagination of older notifications. The bell
-includes direct teacher alerts and links to this page. Existing class notices
-remain in the bell. Timetable is placed immediately below Dashboard in the menu.
+Parent display follows the student dashboard's Latest Updates popup/ticker.
+Unread teacher messages and class notices appear in a scrolling strip below the
+header. Hover/focus pauses scrolling; clicking opens a full-message dialog. Close
+marks the currently displayed updates as read. Reduced-motion users get a static,
+horizontally scrollable strip. The existing bell remains; direct teacher alerts
+open the same dialog and conversation replies open Communication Center.
+
+There is no separate Notifications sidebar entry, page or Notices sub-tab.
+Timetable remains immediately below Dashboard. Backend history/source reads are
+retained so teacher alerts can be consumed without building another standalone UI.
 
 Sources use the existing DB_TABLE_PREFIX (sgs_ on staging):
 

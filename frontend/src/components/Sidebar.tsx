@@ -94,7 +94,6 @@ export default function Sidebar() {
     { name: 'Quiz Performance',     icon: '📊', path: '/parent/quiz' },
     { name: 'Teacher Remarks',      icon: '💬', path: '/parent/remarks' },
     { name: 'Notices',              icon: '🔔', path: '/parent/notices' },
-    { name: 'Notifications',        icon: '🔔', path: '/parent/notifications' },
     { name: 'Communication Center', icon: '🏫', path: '/parent/communication' },
   ];
 

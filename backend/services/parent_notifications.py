@@ -17,7 +17,7 @@ def notification_history(db, student_id, parent_id, limit=50, offset=0):
                    CAST(n.notification_type AS text) AS notification_type,
                    n.message_text AS message, n.sent_at AS sent_at,
                    CAST(n.sent_via AS text) AS channel,
-                   '/parent/notifications' AS link, false AS is_read
+                   '/parent/dashboard' AS link, false AS is_read
             FROM "{p}parent_notifications" n
             LEFT JOIN "{p}teacher_master" t
               ON CAST(t.teacher_id AS text) = CAST(n.teacher_id AS text)

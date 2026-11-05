@@ -4,6 +4,7 @@ import ChildSelector from './ChildSelector';
 import LanguageSelector from './LanguageSelector';
 import { fetchNotifications, PARENT_NAME_KEY, SESSION_EVENT } from '@/lib/api';
 import Link from 'next/link';
+import ParentUpdatesPopup, { ParentUpdate } from './ParentUpdatesPopup';
 import { NOTIFICATION_READ_EVENT, readNotificationIds, saveNotificationIds } from '@/lib/notificationReadState';
 import { useRouter } from 'next/navigation';
 import { BellIcon, Bars3Icon, UserCircleIcon } from '@heroicons/react/24/outline';
@@ -60,6 +61,7 @@ export default function TopBar({
 
   const [notificationError, setNotificationError] = useState('');
   const [notificationScope, setNotificationScope] = useState('');
+  const [selectedUpdate, setSelectedUpdate] = useState<{ scope: string; item: ParentUpdate } | null>(null);
   useEffect(() => {
     let cancelled = false;
     setNotifications([]);
@@ -243,11 +245,15 @@ export default function TopBar({
                     </div>
                   ) : (
                     unreadNotifications.map((n: any) => (
-                      <Link
+                      <button
                         key={n.id}
-                        href={n.link || '#'}
-                        onClick={() => { markOneRead(n.id); setShowNotifications(false); }}
-                        className="p-4 border-b border-white/5 hover:bg-orange-500/10 transition-colors flex gap-3 items-start cursor-pointer block bg-orange-500/5"
+                        type="button"
+                        onClick={() => {
+                          if (n.type === 'teacher_notification') setSelectedUpdate({ scope: `${parentId}:${studentId}`, item: n });
+                          else router.push(n.link || '/parent/notices');
+                          markOneRead(n.id); setShowNotifications(false);
+                        }}
+                        className="w-full text-left p-4 border-b border-white/5 hover:bg-orange-500/10 transition-colors flex gap-3 items-start cursor-pointer block bg-orange-500/5"
                       >
                         <span className="text-xl shrink-0">{notifIcon(n.type)}</span>
                         <div className="flex-1 min-w-0">
@@ -260,18 +266,18 @@ export default function TopBar({
                             {n.date ? new Date(n.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Just now'}
                           </p>
                         </div>
-                      </Link>
+                      </button>
                     ))
                   )}
                 </div>
 
                 <div className="p-3 bg-white/5 border-t border-white/10 text-center">
                   <Link
-                    href="/parent/notifications"
+                    href="/parent/notices"
                     onClick={() => setShowNotifications(false)}
                     className="text-xs font-bold text-slate-400 hover:text-orange-400 uppercase tracking-wider"
                   >
-                    View All Notifications →
+                    View Notices →
                   </Link>
                 </div>
               </div>
@@ -315,6 +321,14 @@ export default function TopBar({
           </div>
         </div>
       </header>
+      <ParentUpdatesPopup
+        key={`${parentId}:${studentId}`}
+        updates={unreadNotifications}
+        selected={selectedUpdate?.scope === `${parentId}:${studentId}` ? selectedUpdate.item : null}
+        onOpen={item => { setSelectedUpdate({ scope: `${parentId}:${studentId}`, item }); markOneRead(item.id); }}
+        onClose={() => setSelectedUpdate(null)}
+        onDismiss={markAllRead}
+      />
 
     </>
   );
