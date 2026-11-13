@@ -48,7 +48,7 @@ from database import Base
 # all reference users_masters.user_id, not teacher_master.teacher_id.
 #
 # role_id is a plain column. The kit has roles, and this model does not
-# declare that foreign key. school_id is a plain column. The kit has no schools table.
+# declare that foreign key. School isolation uses tenant context and database RLS.
 
 class UsersMaster(Base):
     __tablename__ = "users_masters"
@@ -63,7 +63,6 @@ class UsersMaster(Base):
     mobile_no     = Column(String, nullable=True)  # VARCHAR on RDS
     # No FK constraints here. roles is not linked, and the kit has no schools table.
     role_id       = Column(BigInteger, nullable=True)
-    school_id     = Column(BigInteger, nullable=True)
     is_active     = Column(Boolean, nullable=True)
     # Audit
     created_datetime  = Column(TIMESTAMP, nullable=True)
@@ -78,8 +77,7 @@ class ClassMaster(Base):
     __tablename__ = "class_master"
 
     class_id         = Column(BigInteger, primary_key=True, index=True)
-    # school_id: plain column. The kit has no schools table.
-    school_id        = Column(BigInteger, nullable=True)
+    # SaaS school isolation uses the tenant context and database RLS.
     class_name       = Column(String, index=True)
     section_name     = Column(String)
     academic_year    = Column(String)
